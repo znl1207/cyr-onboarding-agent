@@ -1,0 +1,27 @@
+{
+  "name": "cyr-onboarding-agent",
+  "version": "1.0.0",
+  "description": "Telegram onboarding bot with encrypted SSN storage in PostgreSQL.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/znl1207/cyr-onboarding-agent.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/znl1207/cyr-onboarding-agent/issues"
+  },
+  "homepage": "https://github.com/znl1207/cyr-onboarding-agent#readme",
+  "dependencies": {
+    "axios": "^1.15.0",
+    "dotenv": "^17.4.1",
+    "pg": "^8.20.0",
+    "telegraf": "^4.16.3"
+  }
+}
