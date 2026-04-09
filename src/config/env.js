@@ -3,8 +3,6 @@ const dotenv = require('dotenv');
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-const requiredEnvVars = ['BOT_TOKEN', 'DATABASE_URL', 'ENCRYPTION_KEY'];
-
 function getRequiredEnvVar(name) {
   const value = process.env[name];
 
