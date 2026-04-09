@@ -1,20 +1,53 @@
 # cyr-onboarding-agent
 
-Telegram onboarding bot that accepts this message format:
+Node.js onboarding automation agent that starts in Telegram and routes client
+data through CreditRepairCloud (CRC), GoHighLevel (GHL), and optional Twilio
+SMS confirmations.
 
-`First Name, Last Name, DOB, SSN, Email, Phone`
+## Stack
 
-It parses each field, logs the values, encrypts SSN using AES-256, and stores
-the submission in PostgreSQL (Railway-compatible).
+- Runtime: Node.js
+- Hosting: Railway
+- Messaging: Telegram Bot API via Telegraf
+- Integrations: CRC API + GHL API (axios)
+- Database: Railway PostgreSQL (`pg`)
+- Encryption: AES-256 (SSN encrypted before DB write)
+- Backup automation scaffold: Playwright
+- Optional outbound SMS: Twilio
 
-## Tech stack
+## Current flow implemented
 
-- [Telegraf](https://telegraf.js.org/) for Telegram bot handling
-- [axios](https://axios-http.com/) for Telegram API token verification
-- [dotenv](https://github.com/motdotla/dotenv) for environment variables
-- [pg](https://node-postgres.com/) for PostgreSQL access
+1. Sales rep sends Telegram message:
+   - `First Name, Last Name, DOB, SSN, Email, Phone`
+2. Bot parses and validates all fields.
+3. Parsed data is logged to console (including SSN, per your requirement).
+4. SSN is encrypted with AES-256 before storing in PostgreSQL.
+5. Bot attempts CRC client creation (if `CRC_API_KEY` is configured).
+6. Bot attempts GHL contact creation + onboarding pipeline move (if configured).
+7. Bot sends admin review message with submission ID.
+8. Admin replies `APPROVE <submissionId>` (or `/approve <submissionId>`).
+9. Bot marks submission approved and sends optional Twilio SMS confirmation.
 
-## Setup
+## Project structure
+
+```text
+src/
+  config.js
+  db.js
+  encryption.js
+  parser.js
+  index.js
+  services/
+    crcService.js
+    crcPlaywright.js
+    ghlService.js
+    twilioService.js
+    httpError.js
+  workflows/
+    onboardingWorkflow.js
+```
+
+## Quick start
 
 1. Install dependencies:
 
@@ -22,36 +55,66 @@ the submission in PostgreSQL (Railway-compatible).
    npm install
    ```
 
-2. Create `.env` from `.env.example` and set values:
+2. Create local env file:
 
    ```bash
    cp .env.example .env
    ```
 
-3. Start the bot:
+3. Fill required minimum variables:
+   - `TELEGRAM_BOT_TOKEN` (or `BOT_TOKEN`)
+   - `DATABASE_URL`
+   - `ENCRYPTION_KEY`
+
+4. Start the app:
 
    ```bash
    npm start
    ```
 
+## Important security defaults
+
+- `.env` and `node_modules/` are excluded in `.gitignore`.
+- SSN is encrypted before insertion into `onboarding_submissions`.
+- DB writes use parameterized SQL queries.
+
 ## Environment variables
 
-- `BOT_TOKEN`: Telegram bot token from BotFather
-- `DATABASE_URL`: Railway PostgreSQL connection string
-- `ENCRYPTION_KEY`: Key material used to derive a 256-bit AES key
+See `.env.example` for the full list. Key values:
 
-## Database table
+- `TELEGRAM_BOT_TOKEN`: Bot token from BotFather
+- `ADMIN_CHAT_ID`: Optional Telegram chat ID allowed to approve
+- `DATABASE_URL`: Railway PostgreSQL URL
+- `ENCRYPTION_KEY`: key material used to derive AES-256 key
+- `CRC_API_KEY`: enables CRC API writes
+- `GHL_API_KEY`: enables GHL API writes
+- `TWILIO_*`: enables SMS send on approval
 
-On startup, the app creates this table if it doesn't exist:
+## CRC fallback mode
 
-- `onboarding_submissions`
+If CRC REST calls fail and `CRC_USE_PLAYWRIGHT_FALLBACK=true`, the app enters
+a Playwright scaffold (`src/services/crcPlaywright.js`). Add account-specific
+selectors there to complete browser-based fallback submission.
 
-with columns:
+## Database
 
-- `first_name`
-- `last_name`
-- `dob`
-- `ssn_encrypted`
-- `email`
-- `phone`
-- `created_at`
+Table: `onboarding_submissions` (auto-created on startup)
+
+Tracks:
+
+- intake fields (`first_name`, `last_name`, `dob`, `email`, `phone`)
+- encrypted SSN (`ssn_encrypted`)
+- source Telegram IDs
+- CRC/GHL result state and error details
+- approval and SMS status lifecycle
+
+## Railway deployment notes
+
+1. Connect this repo to Railway.
+2. Add PostgreSQL plugin and copy `DATABASE_URL`.
+3. Set all required env vars in Railway service settings.
+4. Deploy and verify logs:
+   - bot startup
+   - DB init
+   - Telegram message intake
+   - CRC/GHL status updates

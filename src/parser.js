@@ -37,4 +37,21 @@ function parseApplicantMessage(input) {
   };
 }
 
-module.exports = { parseApplicantMessage };
+function parseApprovalCommand(input) {
+  if (typeof input !== "string") {
+    return null;
+  }
+
+  const trimmed = input.trim();
+  const match = trimmed.match(/^\/?approve(?:\s+#?(\d+))?$/i);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    submissionId: match[1] ? Number(match[1]) : null,
+  };
+}
+
+module.exports = { parseApplicantMessage, parseApprovalCommand };
