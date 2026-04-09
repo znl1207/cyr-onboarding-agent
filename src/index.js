@@ -60,6 +60,13 @@ async function bootstrap() {
     return ctx.reply(`${FORMAT_HELP}\n\n${APPROVAL_HELP}`);
   });
 
+  bot.command("chatid", async (ctx) => {
+    const configuredAdminChatId = config.adminChatId || "(not set)";
+    await ctx.reply(
+      `Chat ID: ${ctx.chat.id}\nConfigured ADMIN_CHAT_ID: ${configuredAdminChatId}`,
+    );
+  });
+
   bot.on("text", async (ctx) => {
     const text = ctx.message.text;
 
@@ -76,7 +83,7 @@ async function bootstrap() {
             userId: ctx.from?.id,
           });
           await ctx.reply(
-            "Approval is restricted to the configured admin chat only.",
+            `Approval is restricted to the configured admin chat only.\nThis chat ID: ${ctx.chat.id}\nConfigured ADMIN_CHAT_ID: ${config.adminChatId}`,
           );
           return;
         }

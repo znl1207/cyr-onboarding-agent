@@ -88,12 +88,19 @@ The smoke test validates:
 Set an HTTP health port (recommended on Railway):
 
 ```bash
-HEALTH_PORT=3000
+PORT=3000
 ```
 
 Health endpoints:
-- `GET /healthz` -> process status
-- `GET /readyz` -> process + database readiness
+- `GET /health` -> process + database readiness
+
+Admin troubleshooting:
+- Send `/chatid` to the bot to see your current Telegram chat ID.
+- If approvals are restricted unexpectedly, compare this value with `ADMIN_CHAT_ID`.
+- Approval command formats supported:
+  - `APPROVE 123`
+  - `/approve 123`
+  - `/approve@YourBotUsername 123`
 
 ## Important security defaults
 

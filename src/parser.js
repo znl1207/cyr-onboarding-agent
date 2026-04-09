@@ -43,7 +43,11 @@ function parseApprovalCommand(input) {
   }
 
   const trimmed = input.trim();
-  const match = trimmed.match(/^\/?approve(?:\s+#?(\d+))?$/i);
+  // Support private and group command styles:
+  // APPROVE 12
+  // /approve 12
+  // /approve@CYR_onboarding_bot 12
+  const match = trimmed.match(/^\/?approve(?:@[a-z0-9_]+)?(?:\s+#?(\d+))?$/i);
 
   if (!match) {
     return null;

@@ -7,6 +7,7 @@ function runSmokeTest() {
 
   const parsed = parseApplicantMessage(sample);
   const approval = parseApprovalCommand("APPROVE 7");
+  const groupApproval = parseApprovalCommand("/approve@CYR_onboarding_bot 7");
   const encrypted = encryptSsn(parsed.ssn, "local-smoke-test-key");
 
   const checks = [
@@ -14,6 +15,7 @@ function runSmokeTest() {
     ["lastName parsed", parsed.lastName === "Doe"],
     ["dob normalized", parsed.dob === "1990-01-31"],
     ["approval parsed", approval && approval.submissionId === 7],
+    ["group approval parsed", groupApproval && groupApproval.submissionId === 7],
     ["encrypted format", encrypted.split(":").length === 3],
   ];
 
