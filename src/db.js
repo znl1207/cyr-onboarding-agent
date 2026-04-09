@@ -14,6 +14,10 @@ function createPool(databaseUrl) {
 function createDatabaseClient(databaseUrl) {
   const pool = createPool(databaseUrl);
 
+  async function ping() {
+    await pool.query("SELECT 1;");
+  }
+
   async function init() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS onboarding_submissions (
@@ -215,6 +219,7 @@ function createDatabaseClient(databaseUrl) {
   }
 
   return {
+    ping,
     init,
     createSubmission,
     updateCrcResult,

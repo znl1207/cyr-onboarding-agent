@@ -72,6 +72,29 @@ src/
    npm start
    ```
 
+## Operable + testable checklist
+
+Run local smoke checks before connecting live providers:
+
+```bash
+npm run smoke-test
+```
+
+The smoke test validates:
+- message parsing format
+- approval command parsing
+- SSN encryption output shape
+
+Set an HTTP health port (recommended on Railway):
+
+```bash
+HEALTH_PORT=3000
+```
+
+Health endpoints:
+- `GET /healthz` -> process status
+- `GET /readyz` -> process + database readiness
+
 ## Important security defaults
 
 - `.env` and `node_modules/` are excluded in `.gitignore`.

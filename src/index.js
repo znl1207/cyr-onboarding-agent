@@ -7,6 +7,8 @@ const { createCrcService } = require("./services/crcService");
 const { createGhlService } = require("./services/ghlService");
 const { createTwilioService } = require("./services/twilioService");
 const { createOnboardingSubmission } = require("./workflows/onboardingWorkflow");
+const { createHealthServer } = require("./healthServer");
+const { logError, logInfo, logWarn } = require("./logger");
 
 const FORMAT_HELP =
   'Send data in this format:\n"First Name, Last Name, DOB, SSN, Email, Phone"';
@@ -21,12 +23,16 @@ async function verifyTelegramToken(botToken) {
     throw new Error("Unable to verify Telegram bot token.");
   }
 
-  console.log("Connected Telegram bot:", response.data.result.username);
+  logInfo("Connected Telegram bot.", {
+    username: response.data.result.username,
+  });
 }
 
 async function bootstrap() {
   const db = createDatabaseClient(config.databaseUrl);
   await db.init();
+  const healthServer = createHealthServer(config.port, db);
+  await healthServer.start();
 
   await verifyTelegramToken(config.telegramBotToken);
 
@@ -56,6 +62,10 @@ async function bootstrap() {
           config.adminChatId &&
           String(ctx.chat.id) !== String(config.adminChatId)
         ) {
+          logWarn("Unauthorized approval command attempt.", {
+            chatId: ctx.chat.id,
+            userId: ctx.from?.id,
+          });
           await ctx.reply(
             "Approval is restricted to the configured admin chat only.",
           );
@@ -91,10 +101,19 @@ async function bootstrap() {
         await db.updateSmsResult(submission.id, smsResult);
 
         if (smsResult.status === "sent") {
+          logInfo("Submission approved and SMS sent.", {
+            submissionId: submission.id,
+            phone: submission.phone,
+          });
           await ctx.reply(
             `Approved #${submission.id}. Confirmation SMS sent to ${submission.phone}.`,
           );
         } else {
+          logWarn("Submission approved but SMS not sent.", {
+            submissionId: submission.id,
+            smsStatus: smsResult.status,
+            error: smsResult.error,
+          });
           await ctx.reply(
             `Approved #${submission.id}. SMS was not sent (${smsResult.status}). ${smsResult.error || ""}`,
           );
@@ -106,7 +125,7 @@ async function bootstrap() {
       const parsed = parseApplicantMessage(text);
 
       // Requirement: log all parsed fields to console.
-      console.log({
+      logInfo("Parsed incoming applicant message.", {
         firstName: parsed.firstName,
         lastName: parsed.lastName,
         dob: parsed.dob,
@@ -159,8 +178,15 @@ async function bootstrap() {
       ].join("\n");
 
       await bot.telegram.sendMessage(reviewChatId, adminReviewMessage);
+      logInfo("Submission created and review message sent.", {
+        submissionId: workflowResult.submissionId,
+        reviewChatId,
+      });
     } catch (error) {
-      console.error("Failed to process message:", error);
+      logError("Failed to process message.", {
+        error: error.message,
+        stack: error.stack,
+      });
       await ctx.reply(
         `Could not process your message.\n${FORMAT_HELP}\n\nError: ${error.message}`,
       );
@@ -168,11 +194,12 @@ async function bootstrap() {
   });
 
   await bot.launch();
-  console.log("Bot is running...");
+  logInfo("Bot is running.", { port: config.port });
 
   const gracefulShutdown = async (signal) => {
-    console.log(`Received ${signal}. Stopping bot...`);
+    logInfo("Received shutdown signal.", { signal });
     bot.stop(signal);
+    await healthServer.stop();
     await db.close();
     process.exit(0);
   };
@@ -186,6 +213,9 @@ async function bootstrap() {
 }
 
 bootstrap().catch((error) => {
-  console.error("Application failed to start:", error);
+  logError("Application failed to start.", {
+    error: error.message,
+    stack: error.stack,
+  });
   process.exit(1);
 });
