@@ -43,19 +43,31 @@ function parseApprovalCommand(input) {
   }
 
   const trimmed = input.trim();
+  const normalized = trimmed.replace(/[.!]+$/g, "");
   // Support private and group command styles:
   // APPROVE 12
   // /approve 12
   // /approve@CYR_onboarding_bot 12
-  const match = trimmed.match(/^\/?approve(?:@[a-z0-9_]+)?(?:\s+#?(\d+))?$/i);
+  const strictMatch = normalized.match(
+    /^\/?approve(?:@[a-z0-9_]+)?(?:\s*(?:#|id[:\s]*)?\s*(\d+))?$/i,
+  );
 
-  if (!match) {
-    return null;
+  if (strictMatch) {
+    return {
+      submissionId: strictMatch[1] ? Number(strictMatch[1]) : null,
+    };
   }
 
-  return {
-    submissionId: match[1] ? Number(match[1]) : null,
-  };
+  // Fallback for slightly noisy input that still starts with approve.
+  // Examples: "APPROVE pls 12", "/approve now #12"
+  if (/^\/?approve\b/i.test(normalized)) {
+    const idMatch = normalized.match(/(\d+)/);
+    return {
+      submissionId: idMatch ? Number(idMatch[1]) : null,
+    };
+  }
+
+  return null;
 }
 
 module.exports = { parseApplicantMessage, parseApprovalCommand };
