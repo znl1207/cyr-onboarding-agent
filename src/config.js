@@ -33,9 +33,18 @@ function parseBoolean(value, fallback = false) {
   return ["1", "true", "yes", "on"].includes(value.toLowerCase());
 }
 
+function parsePort(value, fallback = 3000) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
+}
+
 const config = {
   appName: process.env.APP_NAME || "cyr-onboarding-agent",
   nodeEnv: process.env.NODE_ENV || "development",
+  port: parsePort(process.env.PORT, 3000),
   telegramBotToken: getRequiredEnvVar("TELEGRAM_BOT_TOKEN", "BOT_TOKEN"),
   adminChatId: process.env.ADMIN_CHAT_ID,
   databaseUrl: getRequiredEnvVar("DATABASE_URL"),

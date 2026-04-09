@@ -31,7 +31,16 @@ async function verifyTelegramToken(botToken) {
 async function bootstrap() {
   const db = createDatabaseClient(config.databaseUrl);
   await db.init();
-  const healthServer = createHealthServer(config.port, db);
+  const healthServer = createHealthServer({
+    port: config.port,
+    appName: config.appName,
+    nodeEnv: config.nodeEnv,
+    logger: {
+      info: (event, data) => logInfo(event, data),
+      error: (event, data) => logError(event, data),
+    },
+    dbHealthcheck: () => db.ping(),
+  });
   await healthServer.start();
 
   await verifyTelegramToken(config.telegramBotToken);
