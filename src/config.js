@@ -52,10 +52,21 @@ const config = {
   crc: {
     apiKey: process.env.CRC_API_KEY,
     secretKey: process.env.CRC_SECRET_KEY,
-    apiMode: process.env.CRC_API_MODE || "auto",
+    apiMode: getEnvVar("CRC_MODE", "CRC_API_MODE") || "auto",
     baseUrl: process.env.CRC_BASE_URL || "https://app.creditrepaircloud.com",
     createClientPath:
       process.env.CRC_CREATE_CLIENT_PATH || "/api/lead/insertRecord",
+    clientStatus: process.env.CRC_CLIENT_STATUS || "Client",
+    referredByFirstName: process.env.CRC_REFERRED_BY_FIRST_NAME || "Zayn",
+    referredByLastName: process.env.CRC_REFERRED_BY_LAST_NAME || "Lakhani",
+    portalAccessEnabled: parseBoolean(
+      process.env.CRC_PORTAL_ACCESS_ENABLED,
+      true,
+    ),
+    sendPortalPasswordEmail: parseBoolean(
+      process.env.CRC_SEND_PORTAL_PASSWORD_EMAIL,
+      true,
+    ),
     usePlaywrightFallback: parseBoolean(
       process.env.CRC_USE_PLAYWRIGHT_FALLBACK,
       false,

@@ -4,63 +4,7 @@ const { getApiErrorMessage } = require("./httpError");
 
 function createCrcService(config) {
   const isEnabled = Boolean(config.apiKey);
-
-  function toCrcDate(isoDate) {
-    const [year, month, day] = String(isoDate).split("-");
-    if (!year || !month || !day) {
-      return "";
-    }
-    return `${month}/${day}/${year}`;
-  }
-
-  function onlyDigits(value) {
-    return String(value || "").replace(/\D/g, "");
-  }
-
-  function buildLegacyCrcXml(clientData) {
-    const mobile = onlyDigits(clientData.phone);
-    const ssnLast4 = onlyDigits(clientData.ssn).slice(-4);
-    const birthDate = toCrcDate(clientData.dob);
-    const email = String(clientData.email || "").trim();
-
-    // CRC legacy endpoint expects XML-form payload with field tags.
-    return [
-      "<lead>",
-      "<type>Client</type>",
-      `<firstname>${escapeXml(clientData.firstName)}</firstname>`,
-      `<lastname>${escapeXml(clientData.lastName)}</lastname>`,
-      `<email>${escapeXml(email)}</email>`,
-      `<phone_mobile>${escapeXml(mobile)}</phone_mobile>`,
-      `<ssno>${escapeXml(ssnLast4)}</ssno>`,
-      `<birth_date>${escapeXml(birthDate)}</birth_date>`,
-      "</lead>",
-    ].join("");
-  }
-
-  function parseLegacyClientId(responseData) {
-    if (!responseData) {
-      return null;
-    }
-
-    if (typeof responseData === "object") {
-      return (
-        responseData.id ||
-        responseData.clientId ||
-        responseData.client_id ||
-        responseData.data?.id ||
-        responseData.data?.clientId ||
-        null
-      );
-    }
-
-    const asText = String(responseData);
-    const encryptedIdMatch = asText.match(
-      /<id[^>]*>([^<]+)<\/id>|<encrypted_id[^>]*>([^<]+)<\/encrypted_id>/i,
-    );
-    return encryptedIdMatch
-      ? encryptedIdMatch[1] || encryptedIdMatch[2] || null
-      : null;
-  }
+  const resolvedMode = resolveCrcMode(config);
 
   async function createClient(clientData) {
     if (!isEnabled) {
@@ -71,9 +15,10 @@ function createCrcService(config) {
     }
 
     try {
-      const response = config.secretKey
-        ? await createClientLegacy(clientData, config)
-        : await createClientJson(clientData, config);
+      const response =
+        resolvedMode === "legacy_xml"
+          ? await createClientLegacy(clientData, config)
+          : await createClientJson(clientData, config);
       const clientId = response.clientId;
 
       return {
@@ -109,6 +54,19 @@ function createCrcService(config) {
   return { createClient, isEnabled };
 }
 
+function resolveCrcMode(config) {
+  const mode = String(config.apiMode || "auto").toLowerCase();
+  if (mode === "legacy_xml" || mode === "legacy" || mode === "xml") {
+    return "legacy_xml";
+  }
+  if (mode === "json") {
+    return "json";
+  }
+
+  // Auto mode: CRC secret key usually means legacy XML API.
+  return config.secretKey ? "legacy_xml" : "json";
+}
+
 async function createClientJson(clientData, config) {
   const url = `${config.baseUrl.replace(/\/$/, "")}${config.createClientPath}`;
   const payload = {
@@ -139,13 +97,26 @@ async function createClientJson(clientData, config) {
 }
 
 async function createClientLegacy(clientData, config) {
-  const path = config.legacyInsertPath || "/api/lead/insertRecord";
-  const url = `${config.baseUrl.replace(/\/$/, "")}${path}`;
-  const xmlData = buildLegacyCrcXml(clientData);
+  if (!config.secretKey) {
+    throw new Error(
+      "CRC legacy mode requires CRC_SECRET_KEY to be configured.",
+    );
+  }
+
+  const url = `${config.baseUrl.replace(/\/$/, "")}${config.createClientPath}`;
+  const xmlData = buildLegacyCrcXml({
+    ...clientData,
+    clientStatus: config.clientStatus,
+    referredByFirstName: config.referredByFirstName,
+    referredByLastName: config.referredByLastName,
+    portalAccessEnabled: config.portalAccessEnabled,
+    sendPortalPasswordEmail: config.sendPortalPasswordEmail,
+  });
 
   const payload = new URLSearchParams({
     apiauthkey: config.apiKey,
     secretkey: config.secretKey,
+    type: config.clientStatus || "Client",
     xmlData,
   });
 
@@ -160,23 +131,52 @@ async function createClientLegacy(clientData, config) {
 }
 
 function buildLegacyCrcXml(clientData) {
-  const mobile = String(clientData.phone || "").replace(/\D/g, "");
-  const ssnLast4 = String(clientData.ssn || "").replace(/\D/g, "").slice(-4);
-  const [year, month, day] = String(clientData.dob || "").split("-");
-  const birthDate =
-    year && month && day ? `${month}/${day}/${year}` : String(clientData.dob);
+  const mobile = onlyDigits(clientData.phone);
+  const ssnLast4 = onlyDigits(clientData.ssn).slice(-4);
+  const birthDate = toCrcDate(clientData.dob);
+  const email = String(clientData.email || "").trim();
+  const referredByFirstName = String(clientData.referredByFirstName || "").trim();
+  const referredByLastName = String(clientData.referredByLastName || "").trim();
+  const enablePortalAccess = Boolean(clientData.portalAccessEnabled) && Boolean(email);
+  const portalAccessValue = enablePortalAccess ? "on" : "off";
+  const sendPortalPasswordEmail = clientData.sendPortalPasswordEmail
+    ? "yes"
+    : "no";
 
-  return [
+  const fields = [
     "<lead>",
-    "<type>Client</type>",
+    `<type>${escapeXml(clientData.clientStatus || "Client")}</type>`,
     `<firstname>${escapeXml(clientData.firstName)}</firstname>`,
     `<lastname>${escapeXml(clientData.lastName)}</lastname>`,
-    `<email>${escapeXml(clientData.email)}</email>`,
+    `<email>${escapeXml(email)}</email>`,
     `<phone_mobile>${escapeXml(mobile)}</phone_mobile>`,
+    `<phone_home>${escapeXml(mobile)}</phone_home>`,
     `<ssno>${escapeXml(ssnLast4)}</ssno>`,
     `<birth_date>${escapeXml(birthDate)}</birth_date>`,
-    "</lead>",
-  ].join("");
+    `<client_portal_access>${portalAccessValue}</client_portal_access>`,
+  ];
+
+  if (enablePortalAccess) {
+    fields.push(`<client_userid>${escapeXml(email)}</client_userid>`);
+    fields.push(
+      `<send_setup_password_info_via_email>${sendPortalPasswordEmail}</send_setup_password_info_via_email>`,
+    );
+  }
+
+  if (referredByFirstName) {
+    fields.push(
+      `<referred_by_firstname>${escapeXml(referredByFirstName)}</referred_by_firstname>`,
+    );
+  }
+
+  if (referredByLastName) {
+    fields.push(
+      `<referred_by_lastname>${escapeXml(referredByLastName)}</referred_by_lastname>`,
+    );
+  }
+
+  fields.push("</lead>");
+  return fields.join("");
 }
 
 function parseLegacyClientId(responseData) {
@@ -202,6 +202,18 @@ function parseLegacyClientId(responseData) {
   return encryptedIdMatch
     ? encryptedIdMatch[1] || encryptedIdMatch[2] || null
     : null;
+}
+
+function toCrcDate(isoDate) {
+  const [year, month, day] = String(isoDate || "").split("-");
+  if (!year || !month || !day) {
+    return "";
+  }
+  return `${month}/${day}/${year}`;
+}
+
+function onlyDigits(value) {
+  return String(value || "").replace(/\D/g, "");
 }
 
 function escapeXml(value) {
