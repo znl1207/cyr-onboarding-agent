@@ -111,38 +111,67 @@ async function createClientLegacy(clientData, config) {
   }
 
   const url = `${config.baseUrl.replace(/\/$/, "")}${config.createClientPath}`;
-  const xmlData = buildLegacyCrcXml({
-    ...clientData,
-    clientStatus: config.clientStatus,
-    referredByFirstName: config.referredByFirstName,
-    referredByLastName: config.referredByLastName,
-    clientAgreement: config.clientAgreement,
-    portalAccessEnabled: config.portalAccessEnabled,
-    sendPortalPasswordEmail: config.sendPortalPasswordEmail,
-  });
+  const statusCandidates = uniqueNonEmpty([
+    config.clientStatus,
+    "Client",
+    "Lead",
+    "Lead/Inactive",
+    "Inactive",
+    "Suspended",
+  ]);
 
-  const payload = new URLSearchParams({
-    apiauthkey: config.apiKey,
-    secretkey: config.secretKey,
-    type: config.clientStatus || "Client",
-    xmlData,
-  });
+  let lastError = null;
+  for (const statusValue of statusCandidates) {
+    for (const includeTypeTag of [true, false]) {
+      const xmlData = buildLegacyCrcXml({
+        ...clientData,
+        clientStatus: statusValue,
+        includeTypeTag,
+        referredByFirstName: config.referredByFirstName,
+        referredByLastName: config.referredByLastName,
+        clientAgreement: config.clientAgreement,
+        portalAccessEnabled: config.portalAccessEnabled,
+        sendPortalPasswordEmail: config.sendPortalPasswordEmail,
+      });
 
-  const response = await axios.post(url, payload.toString(), {
-    timeout: 15000,
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-  });
-  const legacyError = parseLegacyErrorMessage(response.data);
-  if (legacyError) {
-    throw new Error(`CRC API error: ${legacyError}`);
+      const payload = new URLSearchParams({
+        apiauthkey: config.apiKey,
+        secretkey: config.secretKey,
+        type: statusValue,
+        xmlData,
+      });
+
+      const response = await axios.post(url, payload.toString(), {
+        timeout: 15000,
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
+
+      const errorDetails = parseLegacyErrorDetails(response.data);
+      if (errorDetails) {
+        lastError = errorDetails;
+
+        // CRC status-type validation error; try other known values automatically.
+        if (errorDetails.errorNo === "4401") {
+          continue;
+        }
+
+        throw new Error(`CRC API error: ${errorDetails.summary}`);
+      }
+
+      return {
+        clientId: parseLegacyClientId(response.data),
+        responseSummary: summarizeResponse(response.data),
+      };
+    }
   }
 
-  return {
-    clientId: parseLegacyClientId(response.data),
-    responseSummary: summarizeResponse(response.data),
-  };
+  if (lastError) {
+    throw new Error(`CRC API error: ${lastError.summary}`);
+  }
+
+  throw new Error("CRC API call failed without a response.");
 }
 
 function buildLegacyCrcXml(clientData) {
@@ -161,7 +190,13 @@ function buildLegacyCrcXml(clientData) {
 
   const fields = [
     "<lead>",
-    `<type>${escapeXml(clientData.clientStatus || "Client")}</type>`,
+  ];
+
+  if (clientData.includeTypeTag !== false) {
+    fields.push(`<type>${escapeXml(clientData.clientStatus || "Client")}</type>`);
+  }
+
+  fields.push(
     `<firstname>${escapeXml(clientData.firstName)}</firstname>`,
     `<lastname>${escapeXml(clientData.lastName)}</lastname>`,
     `<email>${escapeXml(email)}</email>`,
@@ -170,7 +205,7 @@ function buildLegacyCrcXml(clientData) {
     `<ssno>${escapeXml(ssnLast4)}</ssno>`,
     `<birth_date>${escapeXml(birthDate)}</birth_date>`,
     `<client_portal_access>${portalAccessValue}</client_portal_access>`,
-  ];
+  );
 
   if (enablePortalAccess) {
     fields.push(`<client_userid>${escapeXml(email)}</client_userid>`);
@@ -230,8 +265,9 @@ function parseLegacyClientId(responseData) {
   return tokenMatch ? tokenMatch[1] : null;
 }
 
-function parseLegacyErrorMessage(responseData) {
-  const text = summarizeResponse(responseData).toLowerCase();
+function parseLegacyErrorDetails(responseData) {
+  const summary = summarizeResponse(responseData);
+  const text = summary.toLowerCase();
   const errorSignals = [
     "error",
     "invalid",
@@ -243,7 +279,14 @@ function parseLegacyErrorMessage(responseData) {
   ];
 
   const hasErrorSignal = errorSignals.some((signal) => text.includes(signal));
-  return hasErrorSignal ? summarizeResponse(responseData) : null;
+  if (!hasErrorSignal) {
+    return null;
+  }
+
+  const errorNoMatch = summary.match(/<error_no>\s*([^<]+)\s*<\/error_no>/i);
+  const errorNo = errorNoMatch ? errorNoMatch[1].trim() : null;
+
+  return { errorNo, summary };
 }
 
 function summarizeResponse(responseData) {
@@ -273,6 +316,12 @@ function escapeXml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
+}
+
+function uniqueNonEmpty(values) {
+  return [...new Set(values.map((value) => String(value || "").trim()))].filter(
+    Boolean,
+  );
 }
 
 module.exports = { createCrcService };
