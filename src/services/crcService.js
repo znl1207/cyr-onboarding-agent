@@ -123,6 +123,7 @@ async function createClientLegacy(clientData, config) {
   let lastError = null;
   for (const statusValue of statusCandidates) {
     for (const includeTypeTag of [true, false]) {
+      for (const includeTypeParam of [true, false]) {
       const xmlData = buildLegacyCrcXml({
         ...clientData,
         clientStatus: statusValue,
@@ -137,9 +138,11 @@ async function createClientLegacy(clientData, config) {
       const payload = new URLSearchParams({
         apiauthkey: config.apiKey,
         secretkey: config.secretKey,
-        type: statusValue,
         xmlData,
       });
+      if (includeTypeParam) {
+        payload.set("type", statusValue);
+      }
 
       const response = await axios.post(url, payload.toString(), {
         timeout: 15000,
@@ -164,6 +167,7 @@ async function createClientLegacy(clientData, config) {
         clientId: parseLegacyClientId(response.data),
         responseSummary: summarizeResponse(response.data),
       };
+      }
     }
   }
 
