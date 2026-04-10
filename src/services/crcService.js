@@ -185,6 +185,13 @@ async function createClientLegacy(clientData, config) {
   }
 
   if (lastError) {
+    if (lastError.errorNo === "4401") {
+      throw new Error(
+        `CRC API error: ${lastError.summary} | Attempted status values: ${statusCandidates.join(
+          ", ",
+        )}`,
+      );
+    }
     throw new Error(`CRC API error: ${lastError.summary}`);
   }
 
