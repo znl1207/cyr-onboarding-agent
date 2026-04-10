@@ -51,8 +51,11 @@ const config = {
   encryptionKey: getRequiredEnvVar("ENCRYPTION_KEY"),
   crc: {
     apiKey: process.env.CRC_API_KEY,
-    baseUrl: process.env.CRC_BASE_URL || "https://api.creditrepaircloud.com",
-    createClientPath: process.env.CRC_CREATE_CLIENT_PATH || "/clients",
+    secretKey: process.env.CRC_SECRET_KEY,
+    apiMode: process.env.CRC_API_MODE || "auto",
+    baseUrl: process.env.CRC_BASE_URL || "https://app.creditrepaircloud.com",
+    createClientPath:
+      process.env.CRC_CREATE_CLIENT_PATH || "/api/lead/insertRecord",
     usePlaywrightFallback: parseBoolean(
       process.env.CRC_USE_PLAYWRIGHT_FALLBACK,
       false,

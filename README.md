@@ -116,7 +116,8 @@ See `.env.example` for the full list. Key values:
 - `ADMIN_CHAT_ID`: Optional Telegram chat ID allowed to approve
 - `DATABASE_URL`: Railway PostgreSQL URL
 - `ENCRYPTION_KEY`: key material used to derive AES-256 key
-- `CRC_API_KEY`: enables CRC API writes
+- `CRC_API_KEY`: enables CRC API writes (legacy API auth key)
+- `CRC_SECRET_KEY`: legacy CRC secret key (required for XML API mode)
 - `GHL_API_KEY`: enables GHL API writes
 - `TWILIO_*`: enables SMS send on approval
 
@@ -125,6 +126,22 @@ See `.env.example` for the full list. Key values:
 If CRC REST calls fail and `CRC_USE_PLAYWRIGHT_FALLBACK=true`, the app enters
 a Playwright scaffold (`src/services/crcPlaywright.js`). Add account-specific
 selectors there to complete browser-based fallback submission.
+
+## CRC API mode notes
+
+The service supports two CRC request modes:
+
+- `legacy_xml` (default): uses `apiauthkey` + `secretkey` + `xmlData` form posts
+  to CRC legacy endpoints (`/api/lead/insertRecord`).
+- `json`: uses Bearer/X-API-KEY JSON posting (for custom/proxy APIs only).
+
+For standard Credit Repair Cloud credentials from the CRC dashboard, use:
+
+- `CRC_MODE=legacy_xml`
+- `CRC_BASE_URL=https://app.creditrepaircloud.com`
+- `CRC_CREATE_CLIENT_PATH=/api/lead/insertRecord`
+- `CRC_API_KEY=<your apiauthkey>`
+- `CRC_SECRET_KEY=<your secretkey>`
 
 ## Database
 
