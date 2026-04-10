@@ -151,6 +151,7 @@ For standard Credit Repair Cloud credentials from the CRC dashboard, use:
 - `CRC_API_KEY=<your apiauthkey>`
 - `CRC_SECRET_KEY=<your secretkey>`
 - `CRC_CLIENT_STATUS=Client`
+- `CRC_STATUS_CANDIDATES=Client,Lead,Lead/Client,Active,Pending`
 - `CRC_REFERRED_BY_FIRST_NAME=Zayn`
 - `CRC_REFERRED_BY_LAST_NAME=Lakhani`
 - `CRC_CLIENT_AGREEMENT=<exact agreement name in CRC, if required>`

@@ -61,6 +61,14 @@ function createCrcService(config) {
   return { createClient, isEnabled };
 }
 
+function parseStatusCandidates(config) {
+  const raw = String(config.statusCandidates || "");
+  return raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 function resolveCrcMode(config) {
   const mode = String(config.apiMode || "auto").toLowerCase();
   if (mode === "legacy_xml" || mode === "legacy" || mode === "xml") {
@@ -113,11 +121,15 @@ async function createClientLegacy(clientData, config) {
   const url = `${config.baseUrl.replace(/\/$/, "")}${config.createClientPath}`;
   const statusCandidates = uniqueNonEmpty([
     config.clientStatus,
+    ...parseStatusCandidates(config),
     "Client",
     "Lead",
+    "Lead/Client",
     "Lead/Inactive",
     "Inactive",
     "Suspended",
+    "Active",
+    "Pending",
   ]);
 
   let lastError = null;
