@@ -62,11 +62,12 @@ function createCrcService(config) {
 }
 
 function parseStatusCandidates(config) {
+  if (Array.isArray(config.statusCandidates)) {
+    return config.statusCandidates.map((value) => String(value).trim()).filter(Boolean);
+  }
+
   const raw = String(config.statusCandidates || "");
-  return raw
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
+  return raw.split(",").map((value) => value.trim()).filter(Boolean);
 }
 
 function resolveCrcMode(config) {

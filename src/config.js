@@ -77,7 +77,9 @@ const config = {
     createClientPath:
       process.env.CRC_CREATE_CLIENT_PATH || "/api/lead/insertRecord",
     clientStatus: process.env.CRC_CLIENT_STATUS || "Client",
-    statusCandidates: parseCsvList(process.env.CRC_STATUS_CANDIDATES),
+    statusCandidates: parseCsvList(
+      getEnvVar("CRC_STATUS_CANDIDATES", "CRC_CLIENT_STATUS_CANDIDATES"),
+    ),
     referredByFirstName: process.env.CRC_REFERRED_BY_FIRST_NAME || "Zayn",
     referredByLastName: process.env.CRC_REFERRED_BY_LAST_NAME || "Lakhani",
     clientAgreement: process.env.CRC_CLIENT_AGREEMENT,
