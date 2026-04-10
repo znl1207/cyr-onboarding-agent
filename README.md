@@ -22,7 +22,10 @@ SMS confirmations.
 2. Bot parses and validates all fields.
 3. Parsed data is logged to console (including SSN, per your requirement).
 4. SSN is encrypted with AES-256 before storing in PostgreSQL.
-5. Bot attempts CRC client creation (if `CRC_API_KEY` is configured).
+5. Bot attempts CRC client creation (if `CRC_API_KEY` is configured) using your onboarding defaults:
+   - status: `Client`
+   - referred by: `CRC_REFERRED_BY_FIRST_NAME` + `CRC_REFERRED_BY_LAST_NAME`
+   - portal access: enabled by default when email is present
 6. Bot attempts GHL contact creation + onboarding pipeline move (if configured).
 7. Bot sends admin review message with submission ID.
 8. Admin replies `APPROVE <submissionId>` (or `/approve <submissionId>`).
@@ -88,12 +91,19 @@ The smoke test validates:
 Set an HTTP health port (recommended on Railway):
 
 ```bash
-HEALTH_PORT=3000
+PORT=3000
 ```
 
 Health endpoints:
-- `GET /healthz` -> process status
-- `GET /readyz` -> process + database readiness
+- `GET /health` -> process + database readiness
+
+Admin troubleshooting:
+- Send `/chatid` to the bot to see your current Telegram chat ID.
+- If approvals are restricted unexpectedly, compare this value with `ADMIN_CHAT_ID`.
+- Approval command formats supported:
+  - `APPROVE 123`
+  - `/approve 123`
+  - `/approve@YourBotUsername 123`
 
 ## Important security defaults
 
@@ -109,7 +119,13 @@ See `.env.example` for the full list. Key values:
 - `ADMIN_CHAT_ID`: Optional Telegram chat ID allowed to approve
 - `DATABASE_URL`: Railway PostgreSQL URL
 - `ENCRYPTION_KEY`: key material used to derive AES-256 key
-- `CRC_API_KEY`: enables CRC API writes
+- `CRC_API_KEY`: enables CRC API writes (legacy API auth key)
+- `CRC_SECRET_KEY`: legacy CRC secret key (required for XML API mode)
+- `CRC_CLIENT_STATUS`: default onboarding status (`Client`)
+- `CRC_REFERRED_BY_FIRST_NAME` / `CRC_REFERRED_BY_LAST_NAME`: referral defaults
+- `CRC_CLIENT_AGREEMENT`: optional agreement name when portal access is enabled
+- `CRC_PORTAL_ACCESS_ENABLED`: turn client portal access on/off
+- `CRC_SEND_PORTAL_PASSWORD_EMAIL`: whether CRC emails portal setup info
 - `GHL_API_KEY`: enables GHL API writes
 - `TWILIO_*`: enables SMS send on approval
 
@@ -118,6 +134,34 @@ See `.env.example` for the full list. Key values:
 If CRC REST calls fail and `CRC_USE_PLAYWRIGHT_FALLBACK=true`, the app enters
 a Playwright scaffold (`src/services/crcPlaywright.js`). Add account-specific
 selectors there to complete browser-based fallback submission.
+
+## CRC API mode notes
+
+The service supports two CRC request modes:
+
+- `legacy_xml` (default): uses `apiauthkey` + `secretkey` + `xmlData` form posts
+  to CRC legacy endpoints (`/api/lead/insertRecord`).
+- `json`: uses Bearer/X-API-KEY JSON posting (for custom/proxy APIs only).
+
+For standard Credit Repair Cloud credentials from the CRC dashboard, use:
+
+- `CRC_MODE=legacy_xml`
+- `CRC_BASE_URL=https://app.creditrepaircloud.com`
+- `CRC_CREATE_CLIENT_PATH=/api/lead/insertRecord`
+- `CRC_API_KEY=<your apiauthkey>`
+- `CRC_SECRET_KEY=<your secretkey>`
+- `CRC_CLIENT_STATUS=Client`
+- `CRC_STATUS_CANDIDATES=Client,Lead,Lead/Client,Active,Pending`
+- `CRC_REFERRED_BY_FIRST_NAME=Zayn`
+- `CRC_REFERRED_BY_LAST_NAME=Lakhani`
+- `CRC_CLIENT_AGREEMENT=<exact agreement name in CRC, if required>`
+- `CRC_PORTAL_ACCESS_ENABLED=true`
+- `CRC_SEND_PORTAL_PASSWORD_EMAIL=true`
+
+If CRC returns failures while portal access is enabled, troubleshoot in this order:
+1. Set `CRC_PORTAL_ACCESS_ENABLED=false` and retest to verify base client creation.
+2. Re-enable portal access and set `CRC_CLIENT_AGREEMENT` to the exact agreement
+   label from CRC (My Company -> Agreement).
 
 ## Database
 

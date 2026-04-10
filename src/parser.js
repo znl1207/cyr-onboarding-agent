@@ -42,15 +42,37 @@ function parseApprovalCommand(input) {
     return null;
   }
 
-  const trimmed = input.trim();
-  const match = trimmed.match(/^\/?approve(?:\s+#?(\d+))?$/i);
+  const compactPatternMatch = input
+    .trim()
+    .match(/^\/?approve(?:d)?(?:@[a-z0-9_]+)?#?(\d+)$/i);
+  if (compactPatternMatch) {
+    return {
+      submissionId: Number(compactPatternMatch[1]),
+    };
+  }
 
-  if (!match) {
+  const sanitized = input
+    .replace(/[^\w\s/#@-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Highly tolerant matching for real-world typing/voice input.
+  // Examples accepted:
+  // - APPROVE
+  // - APPROVE 12
+  // - /approve@CYR_onboarding_bot id 12!
+  // - please approve #12
+  const hasApproveKeyword =
+    /\bapprove(?:d)?\b/i.test(sanitized) ||
+    /^\/approve(?:d)?(?:@[a-z0-9_]+)?/i.test(sanitized);
+
+  if (!hasApproveKeyword) {
     return null;
   }
 
+  const idMatch = sanitized.match(/(?:^|\s)#?(\d+)(?:\s|$)/);
   return {
-    submissionId: match[1] ? Number(match[1]) : null,
+    submissionId: idMatch ? Number(idMatch[1]) : null,
   };
 }
 

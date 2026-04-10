@@ -60,6 +60,13 @@ async function bootstrap() {
     return ctx.reply(`${FORMAT_HELP}\n\n${APPROVAL_HELP}`);
   });
 
+  bot.command("chatid", async (ctx) => {
+    const configuredAdminChatId = config.adminChatId || "(not set)";
+    await ctx.reply(
+      `Chat ID: ${ctx.chat.id}\nConfigured ADMIN_CHAT_ID: ${configuredAdminChatId}`,
+    );
+  });
+
   bot.on("text", async (ctx) => {
     const text = ctx.message.text;
 
@@ -76,7 +83,7 @@ async function bootstrap() {
             userId: ctx.from?.id,
           });
           await ctx.reply(
-            "Approval is restricted to the configured admin chat only.",
+            `Approval is restricted to the configured admin chat only.\nThis chat ID: ${ctx.chat.id}\nConfigured ADMIN_CHAT_ID: ${config.adminChatId}`,
           );
           return;
         }
@@ -153,6 +160,20 @@ async function bootstrap() {
         ghlService,
       });
 
+      if (workflowResult.crcResult.status === "failed") {
+        logWarn("CRC client creation failed.", {
+          submissionId: workflowResult.submissionId,
+          error: workflowResult.crcResult.error,
+        });
+      }
+
+      if (workflowResult.ghlResult.status === "failed") {
+        logWarn("GHL contact creation failed.", {
+          submissionId: workflowResult.submissionId,
+          error: workflowResult.ghlResult.error,
+        });
+      }
+
       await ctx.reply(
         [
           `Submission #${workflowResult.submissionId} received and stored securely.`,
@@ -160,10 +181,18 @@ async function bootstrap() {
             workflowResult.crcResult.clientId
               ? ` (ID: ${workflowResult.crcResult.clientId})`
               : ""
+          }${
+            workflowResult.crcResult.error
+              ? ` - ${workflowResult.crcResult.error}`
+              : ""
           }`,
           `GHL: ${workflowResult.ghlResult.status}${
             workflowResult.ghlResult.contactId
               ? ` (ID: ${workflowResult.ghlResult.contactId})`
+              : ""
+          }${
+            workflowResult.ghlResult.error
+              ? ` - ${workflowResult.ghlResult.error}`
               : ""
           }`,
         ].join("\n"),
@@ -181,10 +210,18 @@ async function bootstrap() {
         `Phone: ${parsed.phone}`,
         "",
         `CRC status: ${workflowResult.crcResult.status}`,
+        workflowResult.crcResult.error
+          ? `CRC error: ${workflowResult.crcResult.error}`
+          : null,
         `GHL status: ${workflowResult.ghlResult.status}`,
+        workflowResult.ghlResult.error
+          ? `GHL error: ${workflowResult.ghlResult.error}`
+          : null,
         "",
         `Reply with: APPROVE ${workflowResult.submissionId}`,
-      ].join("\n");
+      ]
+        .filter(Boolean)
+        .join("\n");
 
       await bot.telegram.sendMessage(reviewChatId, adminReviewMessage);
       logInfo("Submission created and review message sent.", {

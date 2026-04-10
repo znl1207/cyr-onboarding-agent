@@ -41,6 +41,26 @@ function parsePort(value, fallback = 3000) {
   return parsed;
 }
 
+function cleanCredential(value) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  // Handle accidental quotes/spaces when copying secrets from dashboards.
+  return value.trim().replace(/^['"]|['"]$/g, "");
+}
+
+function parseCsvList(value) {
+  if (!value) {
+    return [];
+  }
+
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 const config = {
   appName: process.env.APP_NAME || "cyr-onboarding-agent",
   nodeEnv: process.env.NODE_ENV || "development",
@@ -50,9 +70,27 @@ const config = {
   databaseUrl: getRequiredEnvVar("DATABASE_URL"),
   encryptionKey: getRequiredEnvVar("ENCRYPTION_KEY"),
   crc: {
-    apiKey: process.env.CRC_API_KEY,
-    baseUrl: process.env.CRC_BASE_URL || "https://api.creditrepaircloud.com",
-    createClientPath: process.env.CRC_CREATE_CLIENT_PATH || "/clients",
+    apiKey: cleanCredential(process.env.CRC_API_KEY),
+    secretKey: cleanCredential(process.env.CRC_SECRET_KEY),
+    apiMode: getEnvVar("CRC_MODE", "CRC_API_MODE") || "auto",
+    baseUrl: process.env.CRC_BASE_URL || "https://app.creditrepaircloud.com",
+    createClientPath:
+      process.env.CRC_CREATE_CLIENT_PATH || "/api/lead/insertRecord",
+    clientStatus: process.env.CRC_CLIENT_STATUS || "Client",
+    statusCandidates: parseCsvList(
+      getEnvVar("CRC_STATUS_CANDIDATES", "CRC_CLIENT_STATUS_CANDIDATES"),
+    ),
+    referredByFirstName: process.env.CRC_REFERRED_BY_FIRST_NAME || "Zayn",
+    referredByLastName: process.env.CRC_REFERRED_BY_LAST_NAME || "Lakhani",
+    clientAgreement: process.env.CRC_CLIENT_AGREEMENT,
+    portalAccessEnabled: parseBoolean(
+      process.env.CRC_PORTAL_ACCESS_ENABLED,
+      true,
+    ),
+    sendPortalPasswordEmail: parseBoolean(
+      process.env.CRC_SEND_PORTAL_PASSWORD_EMAIL,
+      true,
+    ),
     usePlaywrightFallback: parseBoolean(
       process.env.CRC_USE_PLAYWRIGHT_FALLBACK,
       false,
