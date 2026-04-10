@@ -20,10 +20,17 @@ function createCrcService(config) {
           ? await createClientLegacy(clientData, config)
           : await createClientJson(clientData, config);
       const clientId = response.clientId;
+      if (!clientId) {
+        throw new Error(
+          `CRC did not return a client ID. Response: ${
+            response.responseSummary || "(empty response)"
+          }`,
+        );
+      }
 
       return {
         status: "success",
-        clientId: clientId ? String(clientId) : null,
+        clientId: String(clientId),
       };
     } catch (error) {
       const apiError = getApiErrorMessage(error);
@@ -93,7 +100,7 @@ async function createClientJson(clientData, config) {
     responseData.clientId ||
     responseData.data?.id ||
     responseData.data?.clientId;
-  return { clientId };
+  return { clientId, responseSummary: summarizeResponse(responseData) };
 }
 
 async function createClientLegacy(clientData, config) {
@@ -126,8 +133,15 @@ async function createClientLegacy(clientData, config) {
       "Content-Type": "application/x-www-form-urlencoded",
     },
   });
+  const legacyError = parseLegacyErrorMessage(response.data);
+  if (legacyError) {
+    throw new Error(`CRC API error: ${legacyError}`);
+  }
 
-  return { clientId: parseLegacyClientId(response.data) };
+  return {
+    clientId: parseLegacyClientId(response.data),
+    responseSummary: summarizeResponse(response.data),
+  };
 }
 
 function buildLegacyCrcXml(clientData) {
@@ -189,19 +203,50 @@ function parseLegacyClientId(responseData) {
       responseData.id ||
       responseData.clientId ||
       responseData.client_id ||
+      responseData.encrypted_id ||
       responseData.data?.id ||
       responseData.data?.clientId ||
+      responseData.data?.encrypted_id ||
       null
     );
   }
 
   const asText = String(responseData);
   const encryptedIdMatch = asText.match(
-    /<id[^>]*>([^<]+)<\/id>|<encrypted_id[^>]*>([^<]+)<\/encrypted_id>/i,
+    /<id[^>]*>([^<]+)<\/id>|<encrypted_id[^>]*>([^<]+)<\/encrypted_id>|<client_id[^>]*>([^<]+)<\/client_id>/i,
   );
-  return encryptedIdMatch
-    ? encryptedIdMatch[1] || encryptedIdMatch[2] || null
-    : null;
+  if (encryptedIdMatch) {
+    return encryptedIdMatch[1] || encryptedIdMatch[2] || encryptedIdMatch[3] || null;
+  }
+
+  const tokenMatch = asText.match(
+    /\b(?:client[_\s-]*id|encrypted[_\s-]*id|id)\b\s*[:=]\s*([a-zA-Z0-9+/=_-]{3,})/i,
+  );
+  return tokenMatch ? tokenMatch[1] : null;
+}
+
+function parseLegacyErrorMessage(responseData) {
+  const text = summarizeResponse(responseData).toLowerCase();
+  const errorSignals = [
+    "error",
+    "invalid",
+    "not authorized",
+    "unauthorized",
+    "missing",
+    "failed",
+    "exception",
+  ];
+
+  const hasErrorSignal = errorSignals.some((signal) => text.includes(signal));
+  return hasErrorSignal ? summarizeResponse(responseData) : null;
+}
+
+function summarizeResponse(responseData) {
+  const asText =
+    typeof responseData === "string"
+      ? responseData
+      : JSON.stringify(responseData || {});
+  return asText.replace(/\s+/g, " ").trim().slice(0, 280);
 }
 
 function toCrcDate(isoDate) {
