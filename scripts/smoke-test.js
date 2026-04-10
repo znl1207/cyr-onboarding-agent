@@ -10,6 +10,7 @@ function runSmokeTest() {
   const groupApproval = parseApprovalCommand("/approve@CYR_onboarding_bot 7");
   const punctuatedApproval = parseApprovalCommand("APPROVE #7.");
   const voiceStyleApproval = parseApprovalCommand("approve id 7!");
+  const pastTenseApproval = parseApprovalCommand("approved 7");
   const encrypted = encryptSsn(parsed.ssn, "local-smoke-test-key");
 
   const checks = [
@@ -25,6 +26,10 @@ function runSmokeTest() {
     [
       "voice-style approval parsed",
       voiceStyleApproval && voiceStyleApproval.submissionId === 7,
+    ],
+    [
+      "past-tense approval parsed",
+      pastTenseApproval && pastTenseApproval.submissionId === 7,
     ],
     ["encrypted format", encrypted.split(":").length === 3],
   ];

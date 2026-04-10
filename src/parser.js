@@ -54,8 +54,8 @@ function parseApprovalCommand(input) {
   // - /approve@CYR_onboarding_bot id 12!
   // - please approve #12
   const hasApproveKeyword =
-    /\bapprove\b/i.test(sanitized) ||
-    /^\/approve(?:@[a-z0-9_]+)?/i.test(sanitized);
+    /\bapprove(?:d)?\b/i.test(sanitized) ||
+    /^\/approve(?:d)?(?:@[a-z0-9_]+)?/i.test(sanitized);
 
   if (!hasApproveKeyword) {
     return null;
