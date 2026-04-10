@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "test": "jest --forceExit --detectOpenHandles",
     "smoke:test": "node scripts/smoke-test.js",
     "smoke-test": "node scripts/smoke-test.js"
   },
@@ -26,5 +27,8 @@
     "playwright": "^1.59.1",
     "telegraf": "^4.16.3",
     "twilio": "^5.13.1"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0"
   }
 }

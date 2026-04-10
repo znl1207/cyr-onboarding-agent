@@ -35,6 +35,8 @@ src/
   config.js
   db.js
   encryption.js
+  healthServer.js
+  logger.js
   parser.js
   index.js
   services/
@@ -45,6 +47,15 @@ src/
     httpError.js
   workflows/
     onboardingWorkflow.js
+tests/
+  encryption.test.js
+  healthServer.test.js
+  httpError.test.js
+  logger.test.js
+  parser.test.js
+  services.test.js
+scripts/
+  smoke-test.js
 ```
 
 ## Quick start
@@ -85,15 +96,14 @@ The smoke test validates:
 - approval command parsing
 - SSN encryption output shape
 
-Set an HTTP health port (recommended on Railway):
+The HTTP health server binds to `PORT` (default `3000`):
 
 ```bash
-HEALTH_PORT=3000
+PORT=3000
 ```
 
-Health endpoints:
-- `GET /healthz` -> process status
-- `GET /readyz` -> process + database readiness
+Health endpoint:
+- `GET /health` -> process status + database readiness (returns 200/503 JSON)
 
 ## Important security defaults
 
@@ -131,7 +141,15 @@ Tracks:
 - CRC/GHL result state and error details
 - approval and SMS status lifecycle
 
+## CI
+
+A GitHub Actions workflow runs on every push and PR to `main`:
+- Smoke test (`npm run smoke-test`)
+- Unit tests (`npm test`)
+
 ## Railway deployment notes
+
+The repo includes a `Dockerfile` and `railway.toml` for one-click Railway deploys.
 
 1. Connect this repo to Railway.
 2. Add PostgreSQL plugin and copy `DATABASE_URL`.
