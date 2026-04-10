@@ -55,9 +55,9 @@ function parseCsvList(value) {
     return [];
   }
 
-  return String(value)
+  return cleanCredential(String(value))
     .split(",")
-    .map((item) => item.trim())
+    .map((item) => cleanCredential(item))
     .filter(Boolean);
 }
 
