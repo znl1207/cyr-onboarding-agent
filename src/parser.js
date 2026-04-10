@@ -42,6 +42,15 @@ function parseApprovalCommand(input) {
     return null;
   }
 
+  const compactPatternMatch = input
+    .trim()
+    .match(/^\/?approve(?:d)?(?:@[a-z0-9_]+)?#?(\d+)$/i);
+  if (compactPatternMatch) {
+    return {
+      submissionId: Number(compactPatternMatch[1]),
+    };
+  }
+
   const sanitized = input
     .replace(/[^\w\s/#@-]/g, " ")
     .replace(/\s+/g, " ")
