@@ -59,6 +59,7 @@ const config = {
     clientStatus: process.env.CRC_CLIENT_STATUS || "Client",
     referredByFirstName: process.env.CRC_REFERRED_BY_FIRST_NAME || "Zayn",
     referredByLastName: process.env.CRC_REFERRED_BY_LAST_NAME || "Lakhani",
+    clientAgreement: process.env.CRC_CLIENT_AGREEMENT,
     portalAccessEnabled: parseBoolean(
       process.env.CRC_PORTAL_ACCESS_ENABLED,
       true,

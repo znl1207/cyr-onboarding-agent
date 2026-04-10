@@ -123,6 +123,7 @@ See `.env.example` for the full list. Key values:
 - `CRC_SECRET_KEY`: legacy CRC secret key (required for XML API mode)
 - `CRC_CLIENT_STATUS`: default onboarding status (`Client`)
 - `CRC_REFERRED_BY_FIRST_NAME` / `CRC_REFERRED_BY_LAST_NAME`: referral defaults
+- `CRC_CLIENT_AGREEMENT`: optional agreement name when portal access is enabled
 - `CRC_PORTAL_ACCESS_ENABLED`: turn client portal access on/off
 - `CRC_SEND_PORTAL_PASSWORD_EMAIL`: whether CRC emails portal setup info
 - `GHL_API_KEY`: enables GHL API writes
@@ -152,8 +153,14 @@ For standard Credit Repair Cloud credentials from the CRC dashboard, use:
 - `CRC_CLIENT_STATUS=Client`
 - `CRC_REFERRED_BY_FIRST_NAME=Zayn`
 - `CRC_REFERRED_BY_LAST_NAME=Lakhani`
+- `CRC_CLIENT_AGREEMENT=<exact agreement name in CRC, if required>`
 - `CRC_PORTAL_ACCESS_ENABLED=true`
 - `CRC_SEND_PORTAL_PASSWORD_EMAIL=true`
+
+If CRC returns failures while portal access is enabled, troubleshoot in this order:
+1. Set `CRC_PORTAL_ACCESS_ENABLED=false` and retest to verify base client creation.
+2. Re-enable portal access and set `CRC_CLIENT_AGREEMENT` to the exact agreement
+   label from CRC (My Company -> Agreement).
 
 ## Database
 

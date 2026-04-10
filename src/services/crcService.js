@@ -116,6 +116,7 @@ async function createClientLegacy(clientData, config) {
     clientStatus: config.clientStatus,
     referredByFirstName: config.referredByFirstName,
     referredByLastName: config.referredByLastName,
+    clientAgreement: config.clientAgreement,
     portalAccessEnabled: config.portalAccessEnabled,
     sendPortalPasswordEmail: config.sendPortalPasswordEmail,
   });
@@ -151,6 +152,7 @@ function buildLegacyCrcXml(clientData) {
   const email = String(clientData.email || "").trim();
   const referredByFirstName = String(clientData.referredByFirstName || "").trim();
   const referredByLastName = String(clientData.referredByLastName || "").trim();
+  const clientAgreement = String(clientData.clientAgreement || "").trim();
   const enablePortalAccess = Boolean(clientData.portalAccessEnabled) && Boolean(email);
   const portalAccessValue = enablePortalAccess ? "on" : "off";
   const sendPortalPasswordEmail = clientData.sendPortalPasswordEmail
@@ -172,6 +174,9 @@ function buildLegacyCrcXml(clientData) {
 
   if (enablePortalAccess) {
     fields.push(`<client_userid>${escapeXml(email)}</client_userid>`);
+    if (clientAgreement) {
+      fields.push(`<client_agreement>${escapeXml(clientAgreement)}</client_agreement>`);
+    }
     fields.push(
       `<send_setup_password_info_via_email>${sendPortalPasswordEmail}</send_setup_password_info_via_email>`,
     );
