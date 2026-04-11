@@ -137,6 +137,7 @@ async function createClientLegacy(clientData, config) {
   for (const statusValue of statusCandidates) {
     for (const includeTypeTag of [true, false]) {
       for (const includeTypeParam of [true, false]) {
+        for (const encodeXmlDataBase64 of [false, true]) {
       const xmlData = buildLegacyCrcXml({
         ...clientData,
         clientStatus: statusValue,
@@ -147,11 +148,14 @@ async function createClientLegacy(clientData, config) {
         portalAccessEnabled: config.portalAccessEnabled,
         sendPortalPasswordEmail: config.sendPortalPasswordEmail,
       });
+      const xmlDataPayload = encodeXmlDataBase64
+        ? Buffer.from(xmlData, "utf8").toString("base64")
+        : xmlData;
 
       const payload = new URLSearchParams({
         apiauthkey: config.apiKey,
         secretkey: config.secretKey,
-        xmlData,
+        xmlData: xmlDataPayload,
       });
       if (includeTypeParam) {
         payload.set("type", statusValue);
@@ -168,8 +172,8 @@ async function createClientLegacy(clientData, config) {
       if (errorDetails) {
         lastError = errorDetails;
 
-        // CRC status-type validation error; try other known values automatically.
-        if (errorDetails.errorNo === "4401") {
+        // Retry known shape/validation errors with alternate payload combinations.
+        if (["4401", "4404"].includes(errorDetails.errorNo)) {
           continue;
         }
 
@@ -180,6 +184,7 @@ async function createClientLegacy(clientData, config) {
         clientId: parseLegacyClientId(response.data),
         responseSummary: summarizeResponse(response.data),
       };
+        }
       }
     }
   }
