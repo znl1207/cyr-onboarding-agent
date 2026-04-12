@@ -58,6 +58,15 @@ function cleanCredential(value) {
   return value.trim().replace(/^['"]|['"]$/g, "");
 }
 
+function normalizePrivateKey(value) {
+  const cleaned = cleanCredential(value);
+  if (!cleaned) {
+    return cleaned;
+  }
+
+  return cleaned.replace(/\\n/g, "\n");
+}
+
 function parseCsvList(value) {
   if (!value) {
     return [];
@@ -67,6 +76,28 @@ function parseCsvList(value) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function parseServiceAccount() {
+  const rawJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (rawJson) {
+    try {
+      const parsed = JSON.parse(rawJson);
+      return {
+        clientEmail: parsed.client_email,
+        privateKey: normalizePrivateKey(parsed.private_key),
+      };
+    } catch (error) {
+      throw new Error(
+        `Invalid GOOGLE_SERVICE_ACCOUNT_JSON value: ${error.message}`,
+      );
+    }
+  }
+
+  return {
+    clientEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    privateKey: normalizePrivateKey(process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY),
+  };
 }
 
 const config = {
@@ -130,6 +161,16 @@ const config = {
     webhookUrl: cleanCredential(process.env.ZAPIER_WEBHOOK_URL),
     enabled: Boolean(cleanCredential(process.env.ZAPIER_WEBHOOK_URL)),
     timeoutMs: parsePositiveInteger(process.env.ZAPIER_TIMEOUT_MS, 15000),
+    completionMessage:
+      process.env.ZAPIER_COMPLETION_MESSAGE ||
+      "Onboarding is complete and sent to fulfillment.",
+  },
+  googleSheets: {
+    sheetId: process.env.GOOGLE_SHEET_ID,
+    sheetName: process.env.GOOGLE_SHEET_NAME || "Sheet1",
+    completionNote:
+      process.env.FULFILLMENT_COMPLETION_NOTE || "Onboarding Complete",
+    serviceAccount: parseServiceAccount(),
   },
 };
 

@@ -41,6 +41,13 @@ function createDatabaseClient(databaseUrl) {
         approved_at TIMESTAMPTZ,
         approval_admin_chat_id BIGINT,
         approval_admin_user_id BIGINT,
+        docs_received_at TIMESTAMPTZ,
+        docs_received_by_chat_id BIGINT,
+        docs_received_by_user_id BIGINT,
+        fulfillment_status TEXT NOT NULL DEFAULT 'pending',
+        fulfillment_error TEXT,
+        fulfillment_synced_at TIMESTAMPTZ,
+        fulfillment_row_number INTEGER,
         sms_status TEXT NOT NULL DEFAULT 'not_requested',
         sms_error TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -63,6 +70,13 @@ function createDatabaseClient(databaseUrl) {
       ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS approval_admin_chat_id BIGINT,
       ADD COLUMN IF NOT EXISTS approval_admin_user_id BIGINT,
+      ADD COLUMN IF NOT EXISTS docs_received_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS docs_received_by_chat_id BIGINT,
+      ADD COLUMN IF NOT EXISTS docs_received_by_user_id BIGINT,
+      ADD COLUMN IF NOT EXISTS fulfillment_status TEXT NOT NULL DEFAULT 'pending',
+      ADD COLUMN IF NOT EXISTS fulfillment_error TEXT,
+      ADD COLUMN IF NOT EXISTS fulfillment_synced_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS fulfillment_row_number INTEGER,
       ADD COLUMN IF NOT EXISTS sms_status TEXT NOT NULL DEFAULT 'not_requested',
       ADD COLUMN IF NOT EXISTS sms_error TEXT,
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
@@ -188,6 +202,45 @@ function createDatabaseClient(databaseUrl) {
     );
   }
 
+  async function markDocsReceived(submissionId, metadata) {
+    await pool.query(
+      `
+        UPDATE onboarding_submissions
+        SET
+          docs_received_at = NOW(),
+          docs_received_by_chat_id = $2,
+          docs_received_by_user_id = $3,
+          updated_at = NOW()
+        WHERE id = $1;
+      `,
+      [submissionId, metadata.adminChatId, metadata.adminUserId || null],
+    );
+  }
+
+  async function updateFulfillmentResult(submissionId, fulfillmentResult) {
+    await pool.query(
+      `
+        UPDATE onboarding_submissions
+        SET
+          fulfillment_status = $2,
+          fulfillment_error = $3,
+          fulfillment_synced_at = CASE
+            WHEN $2 = 'success' THEN NOW()
+            ELSE fulfillment_synced_at
+          END,
+          fulfillment_row_number = $4,
+          updated_at = NOW()
+        WHERE id = $1;
+      `,
+      [
+        submissionId,
+        fulfillmentResult.status,
+        fulfillmentResult.error || null,
+        fulfillmentResult.rowNumber || null,
+      ],
+    );
+  }
+
   async function getSubmissionById(submissionId) {
     const result = await pool.query(
       `
@@ -227,6 +280,8 @@ function createDatabaseClient(databaseUrl) {
     markApprovalRequested,
     markApproved,
     updateSmsResult,
+    markDocsReceived,
+    updateFulfillmentResult,
     getSubmissionById,
     getLatestPendingSubmission,
     close,
@@ -255,6 +310,13 @@ function mapSubmission(row) {
     approvedAt: row.approved_at,
     approvalAdminChatId: row.approval_admin_chat_id,
     approvalAdminUserId: row.approval_admin_user_id,
+    docsReceivedAt: row.docs_received_at,
+    docsReceivedByChatId: row.docs_received_by_chat_id,
+    docsReceivedByUserId: row.docs_received_by_user_id,
+    fulfillmentStatus: row.fulfillment_status,
+    fulfillmentError: row.fulfillment_error,
+    fulfillmentSyncedAt: row.fulfillment_synced_at,
+    fulfillmentRowNumber: row.fulfillment_row_number,
     smsStatus: row.sms_status,
     smsError: row.sms_error,
     createdAt: row.created_at,

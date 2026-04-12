@@ -1,4 +1,8 @@
-const { parseApplicantMessage, parseApprovalCommand } = require("../src/parser");
+const {
+  parseApplicantMessage,
+  parseApprovalCommand,
+  parseDocsReceivedCommand,
+} = require("../src/parser");
 const { encryptSsn } = require("../src/encryption");
 
 function runSmokeTest() {
@@ -12,6 +16,7 @@ function runSmokeTest() {
   const voiceStyleApproval = parseApprovalCommand("approve id 7!");
   const pastTenseApproval = parseApprovalCommand("approved 7");
   const noSpaceApproval = parseApprovalCommand("Approve9");
+  const docsReceived = parseDocsReceivedCommand("DOCS_RECEIVED 7");
   const encrypted = encryptSsn(parsed.ssn, "local-smoke-test-key");
 
   const checks = [
@@ -36,6 +41,7 @@ function runSmokeTest() {
       "no-space approval parsed",
       noSpaceApproval && noSpaceApproval.submissionId === 9,
     ],
+    ["docs received parsed", docsReceived && docsReceived.submissionId === 7],
     ["encrypted format", encrypted.split(":").length === 3],
   ];
 

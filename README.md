@@ -31,6 +31,7 @@ SMS confirmations.
 8. Bot sends admin review message with submission ID.
 9. Admin replies `APPROVE <submissionId>` (or `/approve <submissionId>`).
 10. Bot marks submission approved and sends optional Twilio SMS confirmation.
+11. When docs are confirmed, admin replies `DOCS_RECEIVED <submissionId>` to append a fulfillment row to Google Sheets and mark onboarding complete.
 
 ## Project structure
 
@@ -44,6 +45,7 @@ src/
   services/
     crcService.js
     zapierService.js
+    googleSheetsService.js
     crcPlaywright.js
     ghlService.js
     twilioService.js
@@ -106,6 +108,7 @@ Admin troubleshooting:
   - `APPROVE 123`
   - `/approve 123`
   - `/approve@YourBotUsername 123`
+  - `DOCS_RECEIVED 123`
 
 ## Important security defaults
 
@@ -131,6 +134,9 @@ See `.env.example` for the full list. Key values:
 - `CRC_SEND_PORTAL_PASSWORD_EMAIL`: whether CRC emails portal setup info
 - `GHL_API_KEY`: enables GHL API writes
 - `TWILIO_*`: enables SMS send on approval
+- `GOOGLE_SHEET_ID`: target fulfillment sheet ID
+- `GOOGLE_SHEET_NAME`: tab name in the Google Sheet (default `Sheet1`)
+- `GOOGLE_SERVICE_ACCOUNT_JSON` or (`GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`): credentials for Sheets append
 
 ## CRC fallback mode
 
@@ -187,6 +193,17 @@ Suggested Zap:
 2. Action: Credit Repair Cloud -> Create Lead/Client
 3. (Optional) Action: GoHighLevel -> Create/Update Contact
 4. (Optional) Additional notifications
+
+## Fulfillment handoff to Google Sheets
+
+Once docs are received, send:
+
+`DOCS_RECEIVED <submissionId>`
+
+The bot will:
+- mark docs received in PostgreSQL
+- append a row to your configured Google Sheet tab
+- send a Telegram confirmation that onboarding is complete
 
 ## Database
 

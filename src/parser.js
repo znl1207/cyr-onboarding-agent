@@ -76,4 +76,44 @@ function parseApprovalCommand(input) {
   };
 }
 
-module.exports = { parseApplicantMessage, parseApprovalCommand };
+function parseDocsReceivedCommand(input) {
+  if (typeof input !== "string") {
+    return null;
+  }
+
+  const compactPatternMatch = input
+    .trim()
+    .match(/^\/?(?:docs[_\s-]*received|docsdone)(?:@[a-z0-9_]+)?#?(\d+)$/i);
+  if (compactPatternMatch) {
+    return {
+      submissionId: Number(compactPatternMatch[1]),
+    };
+  }
+
+  const sanitized = input
+    .replace(/[^\w\s/#@-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const hasDocsKeyword =
+    /\bdocs(?:\s+received|\s*done)?\b/i.test(sanitized) ||
+    /^\/?docs[_\s-]*received(?:@[a-z0-9_]+)?/i.test(sanitized);
+  if (!hasDocsKeyword) {
+    return null;
+  }
+
+  const idMatch = sanitized.match(/(?:^|\s)#?(\d+)(?:\s|$)/);
+  if (!idMatch) {
+    return null;
+  }
+
+  return {
+    submissionId: Number(idMatch[1]),
+  };
+}
+
+module.exports = {
+  parseApplicantMessage,
+  parseApprovalCommand,
+  parseDocsReceivedCommand,
+};

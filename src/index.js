@@ -2,10 +2,15 @@ const axios = require("axios");
 const { Telegraf } = require("telegraf");
 const { config } = require("./config");
 const { createDatabaseClient } = require("./db");
-const { parseApplicantMessage, parseApprovalCommand } = require("./parser");
+const {
+  parseApplicantMessage,
+  parseApprovalCommand,
+  parseDocsReceivedCommand,
+} = require("./parser");
 const { createCrcService } = require("./services/crcService");
 const { createGhlService } = require("./services/ghlService");
 const { createTwilioService } = require("./services/twilioService");
+const { createGoogleSheetsService } = require("./services/googleSheetsService");
 const { createZapierService } = require("./services/zapierService");
 const { createOnboardingSubmission } = require("./workflows/onboardingWorkflow");
 const { createHealthServer } = require("./healthServer");
@@ -15,6 +20,8 @@ const FORMAT_HELP =
   'Send data in this format:\n"First Name, Last Name, DOB, SSN, Email, Phone"';
 const APPROVAL_HELP =
   "To approve and send the client confirmation SMS, reply with: APPROVE <submissionId>";
+const DOCS_HELP =
+  "When docs are received, reply with: DOCS_RECEIVED <submissionId>";
 
 async function verifyTelegramToken(botToken) {
   const url = `https://api.telegram.org/bot${botToken}/getMe`;
@@ -50,17 +57,18 @@ async function bootstrap() {
   const crcService = createCrcService(config.crc);
   const ghlService = createGhlService(config.ghl);
   const twilioService = createTwilioService(config.twilio);
+  const googleSheetsService = createGoogleSheetsService(config.googleSheets);
   const showGhlStatus = ghlService.isEnabled;
   const zapierService = createZapierService(config.zapier);
 
   bot.start((ctx) => {
     return ctx.reply(
-      `Welcome to ${config.appName}.\n${FORMAT_HELP}\n\n${APPROVAL_HELP}`,
+      `Welcome to ${config.appName}.\n${FORMAT_HELP}\n\n${APPROVAL_HELP}\n${DOCS_HELP}`,
     );
   });
 
   bot.help((ctx) => {
-    return ctx.reply(`${FORMAT_HELP}\n\n${APPROVAL_HELP}`);
+    return ctx.reply(`${FORMAT_HELP}\n\n${APPROVAL_HELP}\n${DOCS_HELP}`);
   });
 
   bot.command("chatid", async (ctx) => {
@@ -74,6 +82,49 @@ async function bootstrap() {
     const text = ctx.message.text;
 
     try {
+      const docsCommand = parseDocsReceivedCommand(text);
+      if (docsCommand) {
+        if (
+          config.adminChatId &&
+          String(ctx.chat.id) !== String(config.adminChatId)
+        ) {
+          await ctx.reply(
+            `Docs confirmation is restricted to the configured admin chat only.\nThis chat ID: ${ctx.chat.id}\nConfigured ADMIN_CHAT_ID: ${config.adminChatId}`,
+          );
+          return;
+        }
+
+        const submission = await db.getSubmissionById(docsCommand.submissionId);
+        if (!submission) {
+          await ctx.reply(
+            `Submission #${docsCommand.submissionId} not found for docs confirmation.`,
+          );
+          return;
+        }
+
+        await db.markDocsReceived(submission.id, {
+          adminChatId: ctx.chat.id,
+          adminUserId: ctx.from?.id,
+        });
+
+        const fulfillmentResult = await googleSheetsService.appendFulfillmentRow(
+          submission,
+        );
+        await db.updateFulfillmentResult(submission.id, fulfillmentResult);
+
+        if (fulfillmentResult.status === "success") {
+          await ctx.reply(
+            `Docs received for #${submission.id}. Added to fulfillment sheet${fulfillmentResult.rowNumber ? ` (row ${fulfillmentResult.rowNumber})` : ""}. ${config.zapier.completionMessage}`,
+          );
+        } else {
+          await ctx.reply(
+            `Docs received for #${submission.id}, but fulfillment sync is ${fulfillmentResult.status}. ${fulfillmentResult.error || ""}`,
+          );
+        }
+
+        return;
+      }
+
       const approvalCommand = parseApprovalCommand(text);
 
       if (approvalCommand) {
