@@ -41,6 +41,14 @@ function parsePort(value, fallback = 3000) {
   return parsed;
 }
 
+function parsePositiveInteger(value, fallback) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
+}
+
 function cleanCredential(value) {
   if (typeof value !== "string") {
     return value;
@@ -117,6 +125,10 @@ const config = {
     approvalMessageTemplate:
       process.env.TWILIO_APPROVAL_TEMPLATE ||
       "You're all set! Disputes will be sent out within the next 24 hours. Any questions? Reach us at 954-770-3006",
+  },
+  zapier: {
+    webhookUrl: process.env.ZAPIER_WEBHOOK_URL,
+    timeoutMs: parsePositiveInteger(process.env.ZAPIER_TIMEOUT_MS, 15000),
   },
 };
 

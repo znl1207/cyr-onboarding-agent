@@ -8,6 +8,7 @@ async function createOnboardingSubmission({
   config,
   crcService,
   ghlService,
+  zapierService,
 }) {
   const encryptedSsn = encryptSsn(parsedApplicant.ssn, config.encryptionKey);
 
@@ -22,7 +23,14 @@ async function createOnboardingSubmission({
     phone: parsedApplicant.phone,
   });
 
-  const crcResult = await crcService.createClient(parsedApplicant);
+  const crcResult = config.zapier.enabled
+    ? await zapierService.sendOnboardingEvent({
+        ...parsedApplicant,
+        submissionId: submission.id,
+        sourceChatId,
+        sourceUserId,
+      })
+    : await crcService.createClient(parsedApplicant);
   await database.updateCrcResult(submission.id, crcResult);
 
   const ghlResult = await ghlService.createOnboardingContact(parsedApplicant);

@@ -6,6 +6,7 @@ const { parseApplicantMessage, parseApprovalCommand } = require("./parser");
 const { createCrcService } = require("./services/crcService");
 const { createGhlService } = require("./services/ghlService");
 const { createTwilioService } = require("./services/twilioService");
+const { createZapierService } = require("./services/zapierService");
 const { createOnboardingSubmission } = require("./workflows/onboardingWorkflow");
 const { createHealthServer } = require("./healthServer");
 const { logError, logInfo, logWarn } = require("./logger");
@@ -49,6 +50,7 @@ async function bootstrap() {
   const crcService = createCrcService(config.crc);
   const ghlService = createGhlService(config.ghl);
   const twilioService = createTwilioService(config.twilio);
+  const zapierService = createZapierService(config.zapier);
 
   bot.start((ctx) => {
     return ctx.reply(
@@ -156,6 +158,7 @@ async function bootstrap() {
         sourceUserId: ctx.from?.id,
         database: db,
         config,
+        zapierService,
         crcService,
         ghlService,
       });

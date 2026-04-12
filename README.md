@@ -9,7 +9,7 @@ SMS confirmations.
 - Runtime: Node.js
 - Hosting: Railway
 - Messaging: Telegram Bot API via Telegraf
-- Integrations: CRC API + GHL API (axios)
+- Integrations: CRC API + Zapier webhook + GHL API (axios)
 - Database: Railway PostgreSQL (`pg`)
 - Encryption: AES-256 (SSN encrypted before DB write)
 - Backup automation scaffold: Playwright
@@ -22,14 +22,15 @@ SMS confirmations.
 2. Bot parses and validates all fields.
 3. Parsed data is logged to console (including SSN, per your requirement).
 4. SSN is encrypted with AES-256 before storing in PostgreSQL.
-5. Bot attempts CRC client creation (if `CRC_API_KEY` is configured) using your onboarding defaults:
+5. Bot attempts client creation via Zapier webhook first (if configured), then falls back to direct CRC API.
+6. Direct CRC API mode (optional) uses your onboarding defaults:
    - status: `Client`
    - referred by: `CRC_REFERRED_BY_FIRST_NAME` + `CRC_REFERRED_BY_LAST_NAME`
    - portal access: enabled by default when email is present
-6. Bot attempts GHL contact creation + onboarding pipeline move (if configured).
-7. Bot sends admin review message with submission ID.
-8. Admin replies `APPROVE <submissionId>` (or `/approve <submissionId>`).
-9. Bot marks submission approved and sends optional Twilio SMS confirmation.
+7. Bot attempts GHL contact creation + onboarding pipeline move (if configured).
+8. Bot sends admin review message with submission ID.
+9. Admin replies `APPROVE <submissionId>` (or `/approve <submissionId>`).
+10. Bot marks submission approved and sends optional Twilio SMS confirmation.
 
 ## Project structure
 
@@ -42,6 +43,7 @@ src/
   index.js
   services/
     crcService.js
+    zapierService.js
     crcPlaywright.js
     ghlService.js
     twilioService.js
@@ -120,6 +122,7 @@ See `.env.example` for the full list. Key values:
 - `DATABASE_URL`: Railway PostgreSQL URL
 - `ENCRYPTION_KEY`: key material used to derive AES-256 key
 - `CRC_API_KEY`: enables CRC API writes (legacy API auth key)
+- `ZAPIER_WEBHOOK_URL`: if set, bot posts intake payload to Zapier for downstream automation (recommended path)
 - `CRC_SECRET_KEY`: legacy CRC secret key (required for XML API mode)
 - `CRC_CLIENT_STATUS`: default onboarding status (`Client`)
 - `CRC_REFERRED_BY_FIRST_NAME` / `CRC_REFERRED_BY_LAST_NAME`: referral defaults
@@ -162,6 +165,28 @@ If CRC returns failures while portal access is enabled, troubleshoot in this ord
 1. Set `CRC_PORTAL_ACCESS_ENABLED=false` and retest to verify base client creation.
 2. Re-enable portal access and set `CRC_CLIENT_AGREEMENT` to the exact agreement
    label from CRC (My Company -> Agreement).
+
+## Zapier-first mode (recommended to avoid CRC XML friction)
+
+If `ZAPIER_WEBHOOK_URL` is set, the bot sends parsed intake data to Zapier and treats that as the primary "CRC create" path.
+
+Webhook payload fields:
+- `submissionId`
+- `firstName`
+- `lastName`
+- `dob`
+- `ssn`
+- `email`
+- `phone`
+- `sourceChatId`
+- `sourceUserId`
+- `receivedAt`
+
+Suggested Zap:
+1. Trigger: Webhooks by Zapier -> Catch Hook
+2. Action: Credit Repair Cloud -> Create Lead/Client
+3. (Optional) Action: GoHighLevel -> Create/Update Contact
+4. (Optional) Additional notifications
 
 ## Database
 
