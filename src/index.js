@@ -50,6 +50,7 @@ async function bootstrap() {
   const crcService = createCrcService(config.crc);
   const ghlService = createGhlService(config.ghl);
   const twilioService = createTwilioService(config.twilio);
+  const showGhlStatus = ghlService.isEnabled;
   const zapierService = createZapierService(config.zapier);
 
   bot.start((ctx) => {
@@ -189,15 +190,19 @@ async function bootstrap() {
               ? ` - ${workflowResult.crcResult.error}`
               : ""
           }`,
-          `GHL: ${workflowResult.ghlResult.status}${
-            workflowResult.ghlResult.contactId
-              ? ` (ID: ${workflowResult.ghlResult.contactId})`
-              : ""
-          }${
-            workflowResult.ghlResult.error
-              ? ` - ${workflowResult.ghlResult.error}`
-              : ""
-          }`,
+          ...(showGhlStatus
+            ? [
+                `GHL: ${workflowResult.ghlResult.status}${
+                  workflowResult.ghlResult.contactId
+                    ? ` (ID: ${workflowResult.ghlResult.contactId})`
+                    : ""
+                }${
+                  workflowResult.ghlResult.error
+                    ? ` - ${workflowResult.ghlResult.error}`
+                    : ""
+                }`,
+              ]
+            : []),
         ].join("\n"),
       );
 
@@ -216,10 +221,14 @@ async function bootstrap() {
         workflowResult.crcResult.error
           ? `CRC error: ${workflowResult.crcResult.error}`
           : null,
-        `GHL status: ${workflowResult.ghlResult.status}`,
-        workflowResult.ghlResult.error
-          ? `GHL error: ${workflowResult.ghlResult.error}`
-          : null,
+        ...(showGhlStatus
+          ? [
+              `GHL status: ${workflowResult.ghlResult.status}`,
+              workflowResult.ghlResult.error
+                ? `GHL error: ${workflowResult.ghlResult.error}`
+                : null,
+            ]
+          : []),
         "",
         `Reply with: APPROVE ${workflowResult.submissionId}`,
       ]
