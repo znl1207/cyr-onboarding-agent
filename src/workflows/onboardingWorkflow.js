@@ -23,9 +23,9 @@ async function createOnboardingSubmission({
     phone: parsedApplicant.phone,
   });
 
-  const crcResult = config.zapier.enabled
-    ? await zapierService.sendOnboardingEvent({
-        ...parsedApplicant,
+  const useZapier = Boolean(zapierService && zapierService.isEnabled);
+  const crcResult = useZapier
+    ? await zapierService.sendOnboardingPayload(parsedApplicant, {
         submissionId: submission.id,
         sourceChatId,
         sourceUserId,

@@ -127,7 +127,8 @@ const config = {
       "You're all set! Disputes will be sent out within the next 24 hours. Any questions? Reach us at 954-770-3006",
   },
   zapier: {
-    webhookUrl: process.env.ZAPIER_WEBHOOK_URL,
+    webhookUrl: cleanCredential(process.env.ZAPIER_WEBHOOK_URL),
+    enabled: Boolean(cleanCredential(process.env.ZAPIER_WEBHOOK_URL)),
     timeoutMs: parsePositiveInteger(process.env.ZAPIER_TIMEOUT_MS, 15000),
   },
 };

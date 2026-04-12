@@ -28,7 +28,7 @@ function createZapierService(config) {
 
     try {
       const response = await axios.post(config.webhookUrl, payload, {
-        timeout: 15000,
+        timeout: config.timeoutMs || 15000,
         headers: {
           "Content-Type": "application/json",
         },
