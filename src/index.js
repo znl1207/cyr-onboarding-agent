@@ -16,7 +16,7 @@ const { createHealthServer } = require("./healthServer");
 const { logError, logInfo, logWarn } = require("./logger");
 
 const FORMAT_HELP =
-  'Send data in this format:\n"First Name, Last Name, DOB, SSN, Email, Phone"';
+  'Send data in this format:\n"First Name, Last Name, DOB (MM/DD/YYYY), SSN, Email, Phone"\nExample: Jane, Doe, 01/31/1990, 123-45-6789, jane@example.com, +15551234567';
 const APPROVAL_HELP = "To approve, reply with: APPROVE <submissionId>";
 const DOCS_HELP =
   "When docs are received, reply with: DOCS_RECEIVED <submissionId>";

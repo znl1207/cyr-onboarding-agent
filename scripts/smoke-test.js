@@ -7,7 +7,7 @@ const { encryptSsn } = require("../src/encryption");
 
 function runSmokeTest() {
   const sample =
-    "Jane, Doe, 1990-01-31, 123-45-6789, jane@example.com, +15551234567";
+    "Jane, Doe, 01/31/1990, 123-45-6789, jane@example.com, +15551234567";
 
   const parsed = parseApplicantMessage(sample);
   const approval = parseApprovalCommand("APPROVE 7");

@@ -1,11 +1,28 @@
 function normalizeDob(value) {
-  const dob = new Date(value);
+  const input = String(value || "").trim();
+  const match = input.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
 
-  if (Number.isNaN(dob.getTime())) {
-    throw new Error("DOB must be a valid date (for example: 1990-01-31).");
+  if (!match) {
+    throw new Error("DOB must use MM/DD/YYYY format (for example: 01/31/1990).");
   }
 
-  return dob.toISOString().slice(0, 10);
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  const year = Number(match[3]);
+  const dob = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    Number.isNaN(dob.getTime()) ||
+    dob.getUTCFullYear() !== year ||
+    dob.getUTCMonth() !== month - 1 ||
+    dob.getUTCDate() !== day
+  ) {
+    throw new Error("DOB must be a real calendar date (for example: 01/31/1990).");
+  }
+
+  return `${year.toString().padStart(4, "0")}-${month
+    .toString()
+    .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
 }
 
 function parseApplicantMessage(input) {

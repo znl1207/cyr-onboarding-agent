@@ -17,7 +17,7 @@ fulfillment handoff automation.
 ## Current flow implemented
 
 1. Sales rep sends Telegram message:
-   - `First Name, Last Name, DOB, SSN, Email, Phone`
+   - `First Name, Last Name, DOB (MM/DD/YYYY), SSN, Email, Phone`
 2. Bot parses and validates all fields.
 3. Parsed data is logged to console (including SSN, per your requirement).
 4. SSN is encrypted with AES-256 before storing in PostgreSQL.
@@ -31,7 +31,6 @@ fulfillment handoff automation.
 9. Admin replies `APPROVE <submissionId>` (or `/approve <submissionId>`).
 10. When documents are received, admin replies `DOCS_RECEIVED <submissionId>`.
 11. Bot appends the client into the fulfillment Google Sheet and confirms in Telegram.
-11. When docs are confirmed, admin replies `DOCS_RECEIVED <submissionId>` to append a fulfillment row to Google Sheets and mark onboarding complete.
 
 ## Project structure
 
