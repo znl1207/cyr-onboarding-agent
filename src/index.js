@@ -9,7 +9,6 @@ const {
 } = require("./parser");
 const { createCrcService } = require("./services/crcService");
 const { createGhlService } = require("./services/ghlService");
-const { createTwilioService } = require("./services/twilioService");
 const { createGoogleSheetsService } = require("./services/googleSheetsService");
 const { createZapierService } = require("./services/zapierService");
 const { createOnboardingSubmission } = require("./workflows/onboardingWorkflow");
@@ -18,8 +17,7 @@ const { logError, logInfo, logWarn } = require("./logger");
 
 const FORMAT_HELP =
   'Send data in this format:\n"First Name, Last Name, DOB, SSN, Email, Phone"';
-const APPROVAL_HELP =
-  "To approve and send the client confirmation SMS, reply with: APPROVE <submissionId>";
+const APPROVAL_HELP = "To approve, reply with: APPROVE <submissionId>";
 const DOCS_HELP =
   "When docs are received, reply with: DOCS_RECEIVED <submissionId>";
 
@@ -56,7 +54,6 @@ async function bootstrap() {
   const bot = new Telegraf(config.telegramBotToken);
   const crcService = createCrcService(config.crc);
   const ghlService = createGhlService(config.ghl);
-  const twilioService = createTwilioService(config.twilio);
   const googleSheetsService = createGoogleSheetsService(config.googleSheets);
   const showGhlStatus = ghlService.isEnabled;
   const zapierService = createZapierService(config.zapier);
@@ -163,31 +160,10 @@ async function bootstrap() {
           adminUserId: ctx.from?.id,
         });
 
-        const smsResult = await twilioService.sendApprovalSms(
-          submission.phone,
-          submission.firstName,
-        );
-
-        await db.updateSmsResult(submission.id, smsResult);
-
-        if (smsResult.status === "sent") {
-          logInfo("Submission approved and SMS sent.", {
-            submissionId: submission.id,
-            phone: submission.phone,
-          });
-          await ctx.reply(
-            `Approved #${submission.id}. Confirmation SMS sent to ${submission.phone}.`,
-          );
-        } else {
-          logWarn("Submission approved but SMS not sent.", {
-            submissionId: submission.id,
-            smsStatus: smsResult.status,
-            error: smsResult.error,
-          });
-          await ctx.reply(
-            `Approved #${submission.id}. SMS was not sent (${smsResult.status}). ${smsResult.error || ""}`,
-          );
-        }
+        logInfo("Submission approved.", {
+          submissionId: submission.id,
+        });
+        await ctx.reply(`Approved #${submission.id}.`);
 
         return;
       }
@@ -232,7 +208,9 @@ async function bootstrap() {
       await ctx.reply(
         [
           `Submission #${workflowResult.submissionId} received and stored securely.`,
-          `CRC: ${workflowResult.crcResult.status}${
+          `${
+            zapierService.isEnabled ? "Dispatch" : "CRC"
+          }: ${workflowResult.crcResult.status}${
             workflowResult.crcResult.clientId
               ? ` (ID: ${workflowResult.crcResult.clientId})`
               : ""
@@ -268,9 +246,9 @@ async function bootstrap() {
         `Email: ${parsed.email}`,
         `Phone: ${parsed.phone}`,
         "",
-        `CRC status: ${workflowResult.crcResult.status}`,
+        `${zapierService.isEnabled ? "Dispatch" : "CRC"} status: ${workflowResult.crcResult.status}`,
         workflowResult.crcResult.error
-          ? `CRC error: ${workflowResult.crcResult.error}`
+          ? `${zapierService.isEnabled ? "Dispatch" : "CRC"} error: ${workflowResult.crcResult.error}`
           : null,
         ...(showGhlStatus
           ? [

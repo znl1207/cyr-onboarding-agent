@@ -1,19 +1,18 @@
 # cyr-onboarding-agent
 
 Node.js onboarding automation agent that starts in Telegram and routes client
-data through CreditRepairCloud (CRC), GoHighLevel (GHL), and optional Twilio
-SMS confirmations.
+data through CreditRepairCloud (CRC), optional Zapier, and operational
+fulfillment handoff automation.
 
 ## Stack
 
 - Runtime: Node.js
 - Hosting: Railway
 - Messaging: Telegram Bot API via Telegraf
-- Integrations: CRC API + Zapier webhook + GHL API (axios)
+- Integrations: CRC API + Zapier webhook + Google Sheets (axios/googleapis)
 - Database: Railway PostgreSQL (`pg`)
 - Encryption: AES-256 (SSN encrypted before DB write)
 - Backup automation scaffold: Playwright
-- Optional outbound SMS: Twilio
 
 ## Current flow implemented
 
@@ -30,7 +29,8 @@ SMS confirmations.
 7. Bot attempts GHL contact creation + onboarding pipeline move (if configured).
 8. Bot sends admin review message with submission ID.
 9. Admin replies `APPROVE <submissionId>` (or `/approve <submissionId>`).
-10. Bot marks submission approved and sends optional Twilio SMS confirmation.
+10. When documents are received, admin replies `DOCS_RECEIVED <submissionId>`.
+11. Bot appends the client into the fulfillment Google Sheet and confirms in Telegram.
 11. When docs are confirmed, admin replies `DOCS_RECEIVED <submissionId>` to append a fulfillment row to Google Sheets and mark onboarding complete.
 
 ## Project structure
@@ -48,7 +48,7 @@ src/
     googleSheetsService.js
     crcPlaywright.js
     ghlService.js
-    twilioService.js
+    googleSheetsService.js
     httpError.js
   workflows/
     onboardingWorkflow.js
@@ -133,7 +133,10 @@ See `.env.example` for the full list. Key values:
 - `CRC_PORTAL_ACCESS_ENABLED`: turn client portal access on/off
 - `CRC_SEND_PORTAL_PASSWORD_EMAIL`: whether CRC emails portal setup info
 - `GHL_API_KEY`: enables GHL API writes
-- `TWILIO_*`: enables SMS send on approval
+- `GOOGLE_SHEET_ID`: target fulfillment sheet id
+- `GOOGLE_SHEET_NAME`: target worksheet/tab name (default `Fulfillment`)
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL`: Google service account client email
+- `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`: service account private key (with `\n` escaped)
 - `GOOGLE_SHEET_ID`: target fulfillment sheet ID
 - `GOOGLE_SHEET_NAME`: tab name in the Google Sheet (default `Sheet1`)
 - `GOOGLE_SERVICE_ACCOUNT_JSON` or (`GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`): credentials for Sheets append
@@ -191,8 +194,7 @@ Webhook payload fields:
 Suggested Zap:
 1. Trigger: Webhooks by Zapier -> Catch Hook
 2. Action: Credit Repair Cloud -> Create Lead/Client
-3. (Optional) Action: GoHighLevel -> Create/Update Contact
-4. (Optional) Additional notifications
+3. (Optional) Action: Additional notifications
 
 ## Fulfillment handoff to Google Sheets
 
@@ -215,7 +217,7 @@ Tracks:
 - encrypted SSN (`ssn_encrypted`)
 - source Telegram IDs
 - CRC/GHL result state and error details
-- approval and SMS status lifecycle
+- approval, docs-received, and fulfillment-sync lifecycle
 
 ## Railway deployment notes
 

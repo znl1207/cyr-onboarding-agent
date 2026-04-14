@@ -48,8 +48,6 @@ function createDatabaseClient(databaseUrl) {
         fulfillment_error TEXT,
         fulfillment_synced_at TIMESTAMPTZ,
         fulfillment_row_number INTEGER,
-        sms_status TEXT NOT NULL DEFAULT 'not_requested',
-        sms_error TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
@@ -77,8 +75,6 @@ function createDatabaseClient(databaseUrl) {
       ADD COLUMN IF NOT EXISTS fulfillment_error TEXT,
       ADD COLUMN IF NOT EXISTS fulfillment_synced_at TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS fulfillment_row_number INTEGER,
-      ADD COLUMN IF NOT EXISTS sms_status TEXT NOT NULL DEFAULT 'not_requested',
-      ADD COLUMN IF NOT EXISTS sms_error TEXT,
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
     `);
 
@@ -188,20 +184,6 @@ function createDatabaseClient(databaseUrl) {
     );
   }
 
-  async function updateSmsResult(submissionId, smsResult) {
-    await pool.query(
-      `
-        UPDATE onboarding_submissions
-        SET
-          sms_status = $2,
-          sms_error = $3,
-          updated_at = NOW()
-        WHERE id = $1;
-      `,
-      [submissionId, smsResult.status, smsResult.error || null],
-    );
-  }
-
   async function markDocsReceived(submissionId, metadata) {
     await pool.query(
       `
@@ -279,7 +261,6 @@ function createDatabaseClient(databaseUrl) {
     updateGhlResult,
     markApprovalRequested,
     markApproved,
-    updateSmsResult,
     markDocsReceived,
     updateFulfillmentResult,
     getSubmissionById,
@@ -317,8 +298,6 @@ function mapSubmission(row) {
     fulfillmentError: row.fulfillment_error,
     fulfillmentSyncedAt: row.fulfillment_synced_at,
     fulfillmentRowNumber: row.fulfillment_row_number,
-    smsStatus: row.sms_status,
-    smsError: row.sms_error,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

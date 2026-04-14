@@ -149,14 +149,6 @@ const config = {
     pipelineId: process.env.GHL_PIPELINE_ID,
     onboardingStageId: process.env.GHL_ONBOARDING_STAGE_ID,
   },
-  twilio: {
-    accountSid: process.env.TWILIO_ACCOUNT_SID,
-    authToken: process.env.TWILIO_AUTH_TOKEN,
-    fromNumber: process.env.TWILIO_FROM_NUMBER,
-    approvalMessageTemplate:
-      process.env.TWILIO_APPROVAL_TEMPLATE ||
-      "You're all set! Disputes will be sent out within the next 24 hours. Any questions? Reach us at 954-770-3006",
-  },
   zapier: {
     webhookUrl: cleanCredential(process.env.ZAPIER_WEBHOOK_URL),
     enabled: Boolean(cleanCredential(process.env.ZAPIER_WEBHOOK_URL)),
